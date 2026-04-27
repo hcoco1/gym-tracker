@@ -147,6 +147,8 @@ const repsValue = document.getElementById("reps").value;
 const setsValue = document.getElementById("sets").value;
 const weightValue = document.getElementById("weight").value;
 
+console.log("DEBUG:", { name, repsValue, setsValue, weightValue });
+
 if (!name || !repsValue || !setsValue || !weightValue) {
   alert("Complete all fields");
   return;
