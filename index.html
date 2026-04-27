@@ -1,428 +1,288 @@
 <!DOCTYPE html>
-<html>
-
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gym Tracker</title>
-
+    <title>ProLift | Gym Tracker</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
     <style>
+        :root {
+            --bg: #0f172a;
+            --card: #1e293b;
+            --accent: #38bdf8;
+            --text: #f1f5f9;
+            --text-dim: #94a3b8;
+            --success: #22c55e;
+            --danger: #ef4444;
+        }
+
+        * { box-sizing: border-box; transition: all 0.2s ease; }
+        
         body {
-            font-family: Arial;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
             max-width: 500px;
             margin: auto;
-            padding: 10px;
+            padding: 20px;
+            line-height: 1.5;
         }
 
-        input,
-        button,
-        select {
-            width: 100%;
-            padding: 10px;
-            margin: 5px 0;
-        }
+        h1, h2 { font-weight: 800; letter-spacing: -0.5px; }
+        h1 { font-size: 2rem; color: var(--accent); margin-bottom: 5px; }
+        .subtitle { color: var(--text-dim); margin-bottom: 25px; font-size: 0.9rem; }
 
         .card {
-            border: 1px solid #ddd;
-            padding: 10px;
-            margin-top: 10px;
+            background: var(--card);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid #334155;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Inputs & Buttons */
+        select, input {
+            background: #0f172a;
+            border: 1px solid #334155;
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
+            width: 100%;
+            margin-bottom: 12px;
+            font-size: 1rem;
+        }
+
+        button {
+            background: var(--accent);
+            color: var(--bg);
+            border: none;
+            padding: 14px;
+            border-radius: 8px;
+            width: 100%;
+            font-weight: 700;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+
+        button:active { transform: scale(0.98); }
+        button.secondary { background: #334155; color: white; margin-top: 10px; }
+        button.outline { background: transparent; border: 1px solid var(--danger); color: var(--danger); }
+
+        /* Workout Active State */
+        #activeWorkoutArea { border-left: 4px solid var(--accent); }
+        .badge {
+            font-size: 0.7rem;
+            padding: 2px 8px;
+            border-radius: 10px;
+            background: #334155;
+            color: var(--accent);
+            margin-left: 8px;
+        }
+
+        /* History List */
+        .history-item { margin-bottom: 15px; cursor: pointer; }
+        .history-header { display: flex; justify-content: space-between; align-items: center; }
+        .exercise-row {
+            padding: 10px 0;
+            border-bottom: 1px solid #334155;
+        }
+        .exercise-row:last-child { border: none; }
+        
+        .hidden { display: none; }
+
+        .weight-hint {
+            font-size: 0.8rem;
+            color: var(--success);
+            margin-bottom: 10px;
+            display: block;
         }
     </style>
 </head>
-
 <body>
 
-    <h1>🏋️ Gym Tracker</h1>
+    <header>
+        <h1>ProLift</h1>
+        <p class="subtitle">Track your gains, crush your goals.</p>
+    </header>
 
-    <!-- ✅ Workout type BEFORE starting -->
-    <select id="workoutType">
-        <option value="">Select Workout Type</option>
-        <option value="Push">Push</option>
-        <option value="Pull">Pull</option>
-        <option value="Legs">Legs</option>
-        <option value="Core">Core</option>
-    </select>
+    <div id="setupArea" class="card">
+        <label style="font-size: 0.8rem; color: var(--text-dim);">Select Split</label>
+        <select id="workoutType">
+            <option value="Push">Push (Chest, Shoulders, Triceps)</option>
+            <option value="Pull">Pull (Back, Biceps)</option>
+            <option value="Legs">Legs (Quads, Hammies, Calves)</option>
+            <option value="Core">Core & Cardio</option>
+        </select>
+        <button onclick="startWorkout()">Start New Session</button>
+    </div>
 
-    <button onclick="startWorkout()">Start Workout</button>
+    <div id="activeWorkoutArea" class="card hidden">
+        <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+            <h3 id="currentWorkoutTitle" style="margin:0">Active Session</h3>
+            <span id="timer" style="color: var(--accent); font-family: monospace;">00:00</span>
+        </div>
 
-    <div id="workout"></div>
+        <select id="exerciseSelect" onchange="handleExerciseChange()"></select>
+        <span id="prevWeightHint" class="weight-hint"></span>
 
-    <h2>History</h2>
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1.5fr; gap: 10px;">
+            <input id="sets" type="number" placeholder="Sets" inputmode="numeric">
+            <input id="reps" type="number" placeholder="Reps" inputmode="numeric">
+            <input id="weight" type="number" placeholder="Kg" step="0.5" inputmode="decimal">
+        </div>
+
+        <button onclick="addExercise()">Add to Log</button>
+        <button class="secondary" onclick="finishWorkout()">Finish Workout</button>
+    </div>
+
+    <h2>Activity History</h2>
     <div id="history"></div>
 
     <script>
+        const exerciseMap = {
+            Push: ["Bench Press", "Incline DB Press", "Overhead Press", "Lateral Raise", "Tricep Pushdown", "Dips"],
+            Pull: ["Pull Ups", "Lat Pulldown", "Barbell Row", "Face Pulls", "Hammer Curls", "Preacher Curls"],
+            Legs: ["Squats", "Leg Press", "RDL", "Leg Extensions", "Leg Curls", "Calf Raises"],
+            Core: ["Plank", "Leg Raises", "Russian Twists", "Cable Crunches"]
+        };
 
-        // ================= EXERCISES =================
-  const exerciseMap = {
-  Push: [
-    // Chest
-    "Bench Press",
-    "Incline Bench Press",
-    "Decline Bench Press",
-    "Incline Dumbbell Press",
-    "Chest Press Machine",
-    "Cable Fly",
-    "Pec Deck",
-
-    // Shoulders
-    "Overhead Press",
-    "Seated Dumbbell Shoulder Press",
-    "Arnold Press",
-    "Lateral Raise",
-    "Cable Lateral Raise",
-    "Front Raise",
-
-    // Triceps
-    "Tricep Pushdown",
-    "Overhead Tricep Extension",
-    "Skull Crushers",
-    "Close Grip Bench Press",
-    "Dips"
-  ],
-
-  Pull: [
-    // Back (vertical pull)
-    "Pull Ups",
-    "Chin Ups",
-    "Lat Pulldown",
-    "Wide Grip Pulldown",
-    "Neutral Grip Pulldown",
-
-    // Back (horizontal pull)
-    "Barbell Row",
-    "Dumbbell Row",
-    "Seated Cable Row",
-    "Chest Supported Row",
-    "T-Bar Row",
-
-    // Rear delts / traps
-    "Face Pull",
-    "Reverse Pec Deck",
-    "Shrugs",
-
-    // Biceps
-    "Barbell Curl",
-    "Dumbbell Curl",
-    "Hammer Curl",
-    "Cable Curl",
-    "Preacher Curl"
-  ],
-
-  Legs: [
-    // Quads
-    "Squat",
-    "Front Squat",
-    "Leg Press",
-    "Hack Squat",
-    "Leg Extension",
-
-    // Hamstrings / glutes
-    "Deadlift",
-    "Romanian Deadlift",
-    "Hip Thrust",
-    "Glute Bridge",
-    "Leg Curl",
-
-    // Unilateral
-    "Lunges",
-    "Bulgarian Split Squat",
-    "Step Ups",
-
-    // Calves
-    "Standing Calf Raise",
-    "Seated Calf Raise"
-  ],
-
-  Core: [
-    // Basic
-    "Plank",
-    "Side Plank",
-    "Crunches",
-    "Sit Ups",
-
-    // Lower abs
-    "Leg Raises",
-    "Hanging Leg Raises",
-    "Hanging Knee Raises",
-
-    // Rotation
-    "Russian Twist",
-    "Cable Woodchopper",
-
-    // Advanced
-    "Ab Wheel",
-    "Mountain Climbers",
-    "Toe Touches"
-  ]
-};
-
-        // ================= SUPABASE =================
         const supabaseClient = window.supabase.createClient(
             "https://qgapzcakepiohslhszur.supabase.co",
             "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFnYXB6Y2FrZXBpb2hzbGhzenVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcyOTc2NTAsImV4cCI6MjA5Mjg3MzY1MH0.HoB0G9Li-D34qQSvBgbZL5yqn6MXVIpXHhTVIQWUGK0"
         );
 
-        let currentWorkout = null;
+        let currentWorkoutId = null;
 
-        // ================= START WORKOUT =================
+        // Initialization
+        window.onload = loadHistory;
+
         async function startWorkout() {
-            try {
-                const type = document.getElementById("workoutType").value;
-
-                if (!type) {
-                    alert("Select workout type first");
-                    return;
-                }
-
-                const { data, error } = await supabaseClient
-                    .from("workouts")
-                    .insert({ type })
-                    .select();
-
-                if (error) throw error;
-
-                currentWorkout = data[0].id;
-
-                renderWorkoutUI();
-
-            } catch (err) {
-                alert(err.message);
-            }
-        }
-
-        // ================= UI =================
-        function renderWorkoutUI() {
-            document.getElementById("workout").innerHTML = `
-    <div class="card">
-
-      <select id="exerciseSelect">
-        <option value="">Select Exercise</option>
-      </select>
-
-      <select id="reps">
-        <option value="">Reps</option>
-        ${[5, 6, 7, 8, 9, 10, 12, 15].map(r => `<option value="${r}">${r}</option>`).join("")}
-      </select>
-
-      <select id="sets">
-        <option value="">Sets</option>
-        ${[1, 2, 3, 4, 5].map(s => `<option value="${s}">${s}</option>`).join("")}
-      </select>
-
-      <input id="weight" type="number" placeholder="Weight (kg)">
-
-      <button onclick="addExercise()">Add</button>
-
-    </div>
-  `;
-
-            populateExercises();
-        }
-
-        // ================= POPULATE EXERCISES =================
-        function populateExercises() {
             const type = document.getElementById("workoutType").value;
-            const select = document.getElementById("exerciseSelect");
+            const { data, error } = await supabaseClient.from("workouts").insert({ type }).select();
+            
+            if (error) return alert("Error starting workout");
 
-            select.innerHTML = `<option value="">Select Exercise</option>`;
-
-            exerciseMap[type].forEach(ex => {
-                const option = document.createElement("option");
-                option.value = ex;
-                option.textContent = ex;
-                select.appendChild(option);
-            });
+            currentWorkoutId = data[0].id;
+            
+            // UI Toggle
+            document.getElementById("setupArea").classList.add("hidden");
+            document.getElementById("activeWorkoutArea").classList.remove("hidden");
+            document.getElementById("currentWorkoutTitle").innerText = `🔥 ${type} Day`;
+            
+            populateExercises(type);
         }
 
-        // ================= ADD EXERCISE =================
-        async function addExercise() {
-            try {
-                const name = document.getElementById("exerciseSelect").value;
-const repsValue = document.getElementById("reps").value;
-const setsValue = document.getElementById("sets").value;
-const weightValue = document.getElementById("weight").value;
+        function populateExercises(type) {
+            const select = document.getElementById("exerciseSelect");
+            select.innerHTML = '<option value="">Choose Exercise...</option>' + 
+                exerciseMap[type].map(ex => `<option value="${ex}">${ex}</option>`).join("");
+        }
 
-console.log("DEBUG:", { name, repsValue, setsValue, weightValue });
+        async function handleExerciseChange() {
+            const name = document.getElementById("exerciseSelect").value;
+            const hintEl = document.getElementById("prevWeightHint");
+            
+            if (!name) { hintEl.innerText = ""; return; }
 
-if (!name || !repsValue || !setsValue || !weightValue) {
-  alert("Complete all fields");
-  return;
-}
+            const { data } = await supabaseClient
+                .from("exercises")
+                .select("weight, reps")
+                .eq("name", name)
+                .order("created_at", { ascending: false })
+                .limit(1);
 
-const reps = parseInt(repsValue);
-const sets = parseInt(setsValue);
-const weight = parseFloat(weightValue);
-
-                await supabaseClient.from("exercises").insert({
-                    workout_id: currentWorkout,
-                    name,
-                    reps,
-                    weight,
-                    sets
-                });
-
-                // Reset inputs
-                document.getElementById("exerciseSelect").value = "";
-                document.getElementById("reps").value = "";
-                document.getElementById("sets").value = "";
-                document.getElementById("weight").value = "";
-
-                document.getElementById("exerciseSelect").focus();
-
-                loadHistory();
-
-            } catch (err) {
-                alert(err.message);
+            if (data && data[0]) {
+                hintEl.innerText = `Last time: ${data[0].weight}kg for ${data[0].reps} reps`;
+                document.getElementById("weight").value = data[0].weight;
+            } else {
+                hintEl.innerText = "First time doing this exercise!";
             }
         }
 
-        // ================= HISTORY =================
-async function loadHistory() {
-  try {
-    const { data, error } = await supabaseClient
-      .from("workouts")
-      .select("id, type, date, exercises(id, name, reps, weight, sets)")
-      .order("date", { ascending: false });
+        async function addExercise() {
+            const name = document.getElementById("exerciseSelect").value;
+            const sets = parseInt(document.getElementById("sets").value);
+            const reps = parseInt(document.getElementById("reps").value);
+            const weight = parseFloat(document.getElementById("weight").value);
 
-    if (error) throw error;
+            if (!name || !sets || !reps || !weight) return alert("Fill all fields");
 
-    const container = document.getElementById("history");
-    container.innerHTML = "";
+            const { error } = await supabaseClient.from("exercises").insert({
+                workout_id: currentWorkoutId,
+                name, reps, weight, sets
+            });
 
-    data.forEach(w => {
-      const totalSets = w.exercises.reduce((a, e) => a + e.sets, 0);
+            if (error) alert("Save failed");
+            
+            // Visual feedback - Clear inputs for next exercise
+            document.getElementById("sets").value = "";
+            document.getElementById("reps").value = "";
+            document.getElementById("exerciseSelect").value = "";
+            document.getElementById("prevWeightHint").innerText = "";
+            
+            loadHistory(); // Refresh history below
+        }
 
-      const card = document.createElement("div");
-      card.className = "card";
+        function finishWorkout() {
+            currentWorkoutId = null;
+            document.getElementById("setupArea").classList.remove("hidden");
+            document.getElementById("activeWorkoutArea").classList.add("hidden");
+        }
 
-card.innerHTML = `
-  <div onclick="toggleDetails('${w.id}')"
-       style="cursor:pointer;">
+        async function loadHistory() {
+            const { data, error } = await supabaseClient
+                .from("workouts")
+                .select("*, exercises(*)")
+                .order("date", { ascending: false });
 
-    <b>${getWorkoutIcon(w.type)} ${w.type} - ${new Date(w.date).toLocaleDateString()}</b>
+            if (error) return;
 
-    <div style="font-size:12px;color:#666;margin-top:2px;">
-      ${w.exercises.length} exercises · 
-      ${w.exercises.reduce((a,e)=>a+e.sets,0)} sets
-    </div>
+            const container = document.getElementById("history");
+            container.innerHTML = data.map(w => `
+                <div class="card history-item">
+                    <div class="history-header" onclick="toggleDetails('${w.id}')">
+                        <div>
+                            <span style="font-weight:bold">${getIcon(w.type)} ${w.type}</span>
+                            <div style="font-size:0.7rem; color:var(--text-dim)">${new Date(w.date).toLocaleDateString()}</div>
+                        </div>
+                        <div style="text-align:right">
+                            <span class="badge">${w.exercises.length} Exercises</span>
+                        </div>
+                    </div>
+                    
+                    <div id="details-${w.id}" class="hidden" style="margin-top:15px; border-top: 1px solid #334155; padding-top:10px;">
+                        ${w.exercises.map(e => `
+                            <div class="exercise-row">
+                                <div style="font-weight:600; font-size:0.9rem">${e.name}</div>
+                                <div style="font-size:0.8rem; color:var(--accent)">
+                                    ${e.sets} sets × ${e.reps} reps @ ${e.weight}kg
+                                </div>
+                            </div>
+                        `).join("")}
+                        <button class="outline" style="margin-top:15px; padding:8px; font-size:0.8rem;" 
+                                onclick="deleteWorkout('${w.id}')">Delete Entry</button>
+                    </div>
+                </div>
+            `).join("");
+        }
 
-  </div>
+        function toggleDetails(id) {
+            const el = document.getElementById(`details-${id}`);
+            el.classList.toggle("hidden");
+        }
 
-  <div id="details-${w.id}" style="display:none;margin-top:10px;">
-    ${renderExercises(w.exercises)}
+        async function deleteWorkout(id) {
+            if (!confirm("Remove this workout from history?")) return;
+            await supabaseClient.from("exercises").delete().eq("workout_id", id);
+            await supabaseClient.from("workouts").delete().eq("id", id);
+            loadHistory();
+        }
 
-    <button onclick="deleteWorkout('${w.id}')"
-      style="background:#ff4d4d;color:white;margin-top:10px;">
-      Delete
-    </button>
-  </div>
-`;
-
-      container.appendChild(card);
-    });
-
-  } catch (err) {
-    console.error(err);
-alert(err.message);
-  }
-}
-
-function renderExercises(exercises) {
-  return exercises.map(e => {
-
-    // 🔹 Build sets display
-    const setsDisplay = Array.from({ length: e.sets })
-      .map(() => `${e.reps}x${e.weight}`)
-      .join(" · ");
-
-    // 🔹 Best set (simple version)
-    const best = `${e.weight}kg x ${e.reps}`;
-
-    return `
-      <div style="margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid #eee;">
-        <div style="font-weight:bold;">${e.name}</div>
-
-        <div style="font-size:13px;color:#444;margin-top:4px;">
-          ${setsDisplay}
-        </div>
-
-        <div style="font-size:12px;color:#888;margin-top:2px;">
-          🔥 Best: ${best}
-        </div>
-      </div>
-    `;
-  }).join("");
-}
-
-function toggleDetails(id) {
-  const el = document.getElementById("details-" + id);
-  el.style.display = el.style.display === "none" ? "block" : "none";
-}
-
-async function deleteWorkout(id) {
-  const confirmDelete = confirm("Delete this workout?");
-  if (!confirmDelete) return;
-
-  try {
-    // delete exercises first (important!)
-    await supabaseClient.from("exercises").delete().eq("workout_id", id);
-
-    // then delete workout
-    await supabaseClient.from("workouts").delete().eq("id", id);
-
-
-
-    loadHistory();
-
-  } catch (err) {
-    alert("Error deleting workout");
-  }
-}
-    function getWorkoutIcon(type) {
-  const map = {
-    Push: "🔴",
-    Pull: "🔵",
-    Legs: "🟢",
-    Core: "🟡"
-  };
-  return map[type] || "🏋️";
-}
-
-async function getLastWeight(exerciseName) {
-  try {
-    const { data, error } = await supabaseClient
-      .from("exercises")
-      .select("weight")
-      .eq("name", exerciseName)
-      .order("id", { ascending: false }) // latest
-      .limit(1);
-
-    if (error) throw error;
-
-    return data.length ? data[0].weight : "";
-
-  } catch (err) {
-    console.error("Autofill error:", err);
-    return "";
-  }
-}
-
-document.addEventListener("change", async (e) => {
-  if (e.target.id === "exerciseSelect") {
-    const exercise = e.target.value;
-
-    if (!exercise) return;
-
-    const lastWeight = await getLastWeight(exercise);
-
-    if (lastWeight) {
-      document.getElementById("weight").value = lastWeight;
-    }
-  }
-});
+        function getIcon(type) {
+            const icons = { Push: "⚡", Pull: "🎣", Legs: "🦵", Core: "🧘" };
+            return icons[type] || "🏋️";
+        }
     </script>
-
 </body>
-
 </html>
