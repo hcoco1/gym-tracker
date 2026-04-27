@@ -1,348 +1,329 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ProLift | Gym Tracker</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <style>
-        :root {
-            --bg: #0f172a;
-            --card: #1e293b;
-            --accent: #38bdf8;
-            --text: #f1f5f9;
-            --text-dim: #94a3b8;
-            --success: #22c55e;
-            --danger: #ef4444;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ProLift | Gym Tracker</title>
 
-        * { box-sizing: border-box; transition: all 0.2s ease; }
-        
-        body {
-            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--bg);
-            color: var(--text);
-            max-width: 500px;
-            margin: auto;
-            padding: 20px;
-            line-height: 1.5;
-        }
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-        h1, h2 { font-weight: 800; letter-spacing: -0.5px; }
-        h1 { font-size: 2rem; color: var(--accent); margin-bottom: 5px; }
-        .subtitle { color: var(--text-dim); margin-bottom: 25px; font-size: 0.9rem; }
+<style>
+:root {
+    --bg: #0f172a;
+    --card: #1e293b;
+    --accent: #38bdf8;
+    --text: #f1f5f9;
+    --text-dim: #94a3b8;
+    --success: #22c55e;
+    --danger: #ef4444;
+}
 
-        .card {
-            background: var(--card);
-            border-radius: 16px;
-            padding: 20px;
-            margin-bottom: 20px;
-            border: 1px solid #334155;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        }
+* { box-sizing: border-box; transition: all 0.2s ease; }
 
-        /* Inputs & Buttons */
-        select, input {
-            background: #0f172a;
-            border: 1px solid #334155;
-            color: white;
-            padding: 12px;
-            border-radius: 8px;
-            width: 100%;
-            margin-bottom: 12px;
-            font-size: 1rem;
-        }
+body {
+    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    background-color: var(--bg);
+    color: var(--text);
+    max-width: 500px;
+    margin: auto;
+    padding: 20px;
+}
 
-        button {
-            background: var(--accent);
-            color: var(--bg);
-            border: none;
-            padding: 14px;
-            border-radius: 8px;
-            width: 100%;
-            font-weight: 700;
-            cursor: pointer;
-            font-size: 1rem;
-        }
+h1 { color: var(--accent); }
 
-        button:active { transform: scale(0.98); }
-        button.secondary { background: #334155; color: white; margin-top: 10px; }
-        button.outline { background: transparent; border: 1px solid var(--danger); color: var(--danger); }
+.card {
+    background: var(--card);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 20px;
+    border: 1px solid #334155;
+}
 
-        /* Workout Active State */
-        #activeWorkoutArea { border-left: 4px solid var(--accent); }
-        .badge {
-            font-size: 0.7rem;
-            padding: 2px 8px;
-            border-radius: 10px;
-            background: #334155;
-            color: var(--accent);
-            margin-left: 8px;
-        }
+select, input {
+    background: #0f172a;
+    border: 1px solid #334155;
+    color: white;
+    padding: 12px;
+    border-radius: 8px;
+    width: 100%;
+    margin-bottom: 12px;
+}
 
-        /* History List */
-        .history-item { margin-bottom: 15px; cursor: pointer; }
-        .history-header { display: flex; justify-content: space-between; align-items: center; }
-        .exercise-row {
-            padding: 10px 0;
-            border-bottom: 1px solid #334155;
-        }
-        .exercise-row:last-child { border: none; }
-        
-        .hidden { display: none; }
+button {
+    background: var(--accent);
+    color: var(--bg);
+    border: none;
+    padding: 14px;
+    border-radius: 8px;
+    width: 100%;
+    font-weight: 700;
+    cursor: pointer;
+}
 
-        .weight-hint {
-            font-size: 0.8rem;
-            color: var(--success);
-            margin-bottom: 10px;
-            display: block;
-        }
-    </style>
+button.secondary { background: #334155; color: white; }
+button.outline { background: transparent; border: 1px solid var(--danger); color: var(--danger); }
+button.delete-workout {
+    background: transparent;
+    border: 1px solid var(--danger);
+    color: var(--danger);
+    margin-top: 12px;
+    padding: 10px;
+}
+
+.hidden { display:none; }
+
+#logoutBtn {
+  position: fixed;
+  top: 15px;
+  right: 15px;
+  width: 40px;
+  height: 40px;
+  background: #334155;
+  color: #f1f5f9;
+  border-radius: 10px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+</style>
 </head>
+
 <body>
 
-    <header>
-        <h1>ProLift</h1>
-        <p class="subtitle">Track your gains, crush your goals.</p>
-    </header>
+<h1>ProLift</h1>
+<div id="logoutBtn" onclick="logout()">⎋</div>
 
-    <div id="authArea" class="card">
-  <h3>Login / Sign Up</h3>
-
-  <input id="email" type="email" placeholder="Email">
-  <input id="password" type="password" placeholder="Password">
-
-  <button onclick="signUp()">Sign Up</button>
-  <button class="secondary" onclick="signIn()">Sign In</button>
+<!-- AUTH -->
+<div id="authArea" class="card">
+<input id="email" type="email" placeholder="Email">
+<input id="password" type="password" placeholder="Password">
+<button onclick="signUp()">Sign Up</button>
+<button class="secondary" onclick="signIn()">Sign In</button>
 </div>
-    <div id="setupArea" class="card">
-        <label style="font-size: 0.8rem; color: var(--text-dim);">Select Split</label>
-        <select id="workoutType">
-            <option value="Push">Push (Chest, Shoulders, Triceps)</option>
-            <option value="Pull">Pull (Back, Biceps)</option>
-            <option value="Legs">Legs (Quads, Hammies, Calves)</option>
-            <option value="Core">Core & Cardio</option>
-        </select>
-        <button onclick="startWorkout()">Start New Session</button>
-    </div>
 
-    <div id="activeWorkoutArea" class="card hidden">
-        <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-            <h3 id="currentWorkoutTitle" style="margin:0">Active Session</h3>
-            <span id="timer" style="color: var(--accent); font-family: monospace;">00:00</span>
-        </div>
+<!-- SETUP -->
+<div id="setupArea" class="card hidden">
+<select id="workoutType">
+<option value="Push">Push</option>
+<option value="Pull">Pull</option>
+<option value="Legs">Legs</option>
+<option value="Core">Core</option>
+</select>
+<button onclick="startWorkout()">Start Workout</button>
+</div>
 
-        <select id="exerciseSelect" onchange="handleExerciseChange()"></select>
-        <span id="prevWeightHint" class="weight-hint"></span>
+<!-- ACTIVE -->
+<div id="activeWorkoutArea" class="card hidden">
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr 1.5fr; gap: 10px;">
-            <input id="sets" type="number" placeholder="Sets" inputmode="numeric">
-            <input id="reps" type="number" placeholder="Reps" inputmode="numeric">
-            <input id="weight" type="number" placeholder="Kg" step="0.5" inputmode="decimal">
-        </div>
+<select id="exerciseSelect" onchange="handleExerciseChange()"></select>
+<span id="prevWeightHint" style="color:var(--success);font-size:12px;"></span>
 
-        <button onclick="addExercise()">Add to Log</button>
-        <button class="secondary" onclick="finishWorkout()">Finish Workout</button>
-    </div>
+<input id="sets" type="number" placeholder="Sets">
+<input id="reps" type="number" placeholder="Reps">
+<input id="weight" type="number" placeholder="Weight (kg)">
 
-    <h2>Activity History</h2>
-    <div id="history"></div>
+<button onclick="addExercise()">Add Exercise</button>
+<button class="secondary" onclick="finishWorkout()">Finish Workout</button>
 
-    <script>
+</div>
 
-      let currentUser = null;
+<h2>History</h2>
+<div id="history"></div>
 
-// Check session on load
+<script>
+
+// ================= SUPABASE FIRST =================
+const supabaseClient = window.supabase.createClient(
+    "https://qgapzcakepiohslhszur.supabase.co",
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFnYXB6Y2FrZXBpb2hzbGhzenVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcyOTc2NTAsImV4cCI6MjA5Mjg3MzY1MH0.HoB0G9Li-D34qQSvBgbZL5yqn6MXVIpXHhTVIQWUGK0"
+);
+
+// ================= STATE =================
+let currentUser = null;
+let currentWorkoutId = null;
+
+// ================= AUTH =================
 window.onload = async () => {
-  const { data } = await supabaseClient.auth.getUser();
-  currentUser = data.user;
+    const { data: { session } } = await supabaseClient.auth.getSession();
 
-  if (currentUser) {
-    document.getElementById("authArea").classList.add("hidden");
-    loadHistory();
-  }
+    if (session) {
+        currentUser = session.user;
+        onLogin();
+    } else {
+        onLogout();
+    }
 };
 
-// SIGN UP
-async function signUp() {
-  const email = document.getElementById("email").value;
-  const password = document.getElementById("password").value;
-
-  const { error } = await supabaseClient.auth.signUp({
-    email,
-    password
-  });
-
-  if (error) return alert(error.message);
-
-  alert("Check your email to confirm signup");
-}
-
-// SIGN IN
-async function signIn() {
-  const email = document.getElementById("email").value;
-  const password = document.getElementById("password").value;
-
-  const { data, error } = await supabaseClient.auth.signInWithPassword({
-    email,
-    password
-  });
-
-  if (error) return alert(error.message);
-
-  currentUser = data.user;
-
-  document.getElementById("authArea").classList.add("hidden");
-
-  loadHistory();
-}
-        const exerciseMap = {
-            Push: ["Bench Press", "Incline DB Press", "Overhead Press", "Lateral Raise", "Tricep Pushdown", "Dips"],
-            Pull: ["Pull Ups", "Lat Pulldown", "Barbell Row", "Face Pulls", "Hammer Curls", "Preacher Curls"],
-            Legs: ["Squats", "Leg Press", "RDL", "Leg Extensions", "Leg Curls", "Calf Raises"],
-            Core: ["Plank", "Leg Raises", "Russian Twists", "Cable Crunches"]
-        };
-
-        const supabaseClient = window.supabase.createClient(
-            "https://qgapzcakepiohslhszur.supabase.co",
-            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFnYXB6Y2FrZXBpb2hzbGhzenVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcyOTc2NTAsImV4cCI6MjA5Mjg3MzY1MH0.HoB0G9Li-D34qQSvBgbZL5yqn6MXVIpXHhTVIQWUGK0"
-        );
-
-        let currentWorkoutId = null;
-
-        // Initialization
-        window.onload = loadHistory;
-
-        async function startWorkout() {
-            const type = document.getElementById("workoutType").value;
-            const { data, error } = await supabaseClient.from("workouts").insert({
-  type,
-  user_id: currentUser.id
-}).select();
-            
-            if (error) return alert("Error starting workout");
-
-            currentWorkoutId = data[0].id;
-            
-            // UI Toggle
-            document.getElementById("setupArea").classList.add("hidden");
-            document.getElementById("activeWorkoutArea").classList.remove("hidden");
-            document.getElementById("currentWorkoutTitle").innerText = `🔥 ${type} Day`;
-            
-            populateExercises(type);
-        }
-
-        function populateExercises(type) {
-            const select = document.getElementById("exerciseSelect");
-            select.innerHTML = '<option value="">Choose Exercise...</option>' + 
-                exerciseMap[type].map(ex => `<option value="${ex}">${ex}</option>`).join("");
-        }
-
-        async function handleExerciseChange() {
-            const name = document.getElementById("exerciseSelect").value;
-            const hintEl = document.getElementById("prevWeightHint");
-            
-            if (!name) { hintEl.innerText = ""; return; }
-
-            const { data } = await supabaseClient
-                .from("exercises")
-                .select("weight, reps")
-                .eq("name", name)
-                .order("created_at", { ascending: false })
-                .limit(1);
-
-            if (data && data[0]) {
-                hintEl.innerText = `Last time: ${data[0].weight}kg for ${data[0].reps} reps`;
-                document.getElementById("weight").value = data[0].weight;
-            } else {
-                hintEl.innerText = "First time doing this exercise!";
-            }
-        }
-
-        async function addExercise() {
-            const name = document.getElementById("exerciseSelect").value;
-            const sets = parseInt(document.getElementById("sets").value);
-            const reps = parseInt(document.getElementById("reps").value);
-            const weight = parseFloat(document.getElementById("weight").value);
-
-            if (!name || !sets || !reps || !weight) return alert("Fill all fields");
-
-            const { error } = await supabaseClient.from("exercises").insert({
-  workout_id: currentWorkoutId,
-  name, reps, weight, sets,
-  user_id: currentUser.id
+supabaseClient.auth.onAuthStateChange((event, session) => {
+    if (session) {
+        currentUser = session.user;
+        onLogin();
+    } else {
+        currentUser = null;
+        onLogout();
+    }
 });
 
-            if (error) alert("Save failed");
-            
-            // Visual feedback - Clear inputs for next exercise
-            document.getElementById("sets").value = "";
-            document.getElementById("reps").value = "";
-            document.getElementById("exerciseSelect").value = "";
-            document.getElementById("prevWeightHint").innerText = "";
-            
-            loadHistory(); // Refresh history below
-        }
+function onLogin() {
+    document.getElementById("authArea").classList.add("hidden");
+    document.getElementById("setupArea").classList.remove("hidden");
+    document.getElementById("logoutBtn").style.display = "flex";
+    loadHistory();
+}
 
-        function finishWorkout() {
-            currentWorkoutId = null;
-            document.getElementById("setupArea").classList.remove("hidden");
-            document.getElementById("activeWorkoutArea").classList.add("hidden");
-        }
+function onLogout() {
+    document.getElementById("authArea").classList.remove("hidden");
+    document.getElementById("setupArea").classList.add("hidden");
+    document.getElementById("logoutBtn").style.display = "none";
+}
 
-        async function loadHistory() {
-            const { data, error } = await supabaseClient
-                .from("workouts")
-                .select("*, exercises(*)")
-                .order("date", { ascending: false });
+// ================= AUTH ACTIONS =================
+async function signUp() {
+    const email = document.getElementById("email").value;
+    const password = document.getElementById("password").value;
 
-            if (error) return;
+    const { error } = await supabaseClient.auth.signUp({ email, password });
+    if (error) return alert(error.message);
 
-            const container = document.getElementById("history");
-            container.innerHTML = data.map(w => `
-                <div class="card history-item">
-                    <div class="history-header" onclick="toggleDetails('${w.id}')">
-                        <div>
-                            <span style="font-weight:bold">${getIcon(w.type)} ${w.type}</span>
-                            <div style="font-size:0.7rem; color:var(--text-dim)">${new Date(w.date).toLocaleDateString()}</div>
-                        </div>
-                        <div style="text-align:right">
-                            <span class="badge">${w.exercises.length} Exercises</span>
-                        </div>
-                    </div>
-                    
-                    <div id="details-${w.id}" class="hidden" style="margin-top:15px; border-top: 1px solid #334155; padding-top:10px;">
-                        ${w.exercises.map(e => `
-                            <div class="exercise-row">
-                                <div style="font-weight:600; font-size:0.9rem">${e.name}</div>
-                                <div style="font-size:0.8rem; color:var(--accent)">
-                                    ${e.sets} sets × ${e.reps} reps @ ${e.weight}kg
-                                </div>
-                            </div>
-                        `).join("")}
-                        <button class="outline" style="margin-top:15px; padding:8px; font-size:0.8rem;" 
-                                onclick="deleteWorkout('${w.id}')">Delete Entry</button>
-                    </div>
-                </div>
-            `).join("");
-        }
+    alert("Check your email");
+}
 
-        function toggleDetails(id) {
-            const el = document.getElementById(`details-${id}`);
-            el.classList.toggle("hidden");
-        }
+async function signIn() {
+    const email = document.getElementById("email").value;
+    const password = document.getElementById("password").value;
 
-        async function deleteWorkout(id) {
-            if (!confirm("Remove this workout from history?")) return;
-            await supabaseClient.from("exercises").delete().eq("workout_id", id);
-            await supabaseClient.from("workouts").delete().eq("id", id);
-            loadHistory();
-        }
+    const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+    if (error) return alert(error.message);
 
-        function getIcon(type) {
-            const icons = { Push: "⚡", Pull: "🎣", Legs: "🦵", Core: "🧘" };
-            return icons[type] || "🏋️";
-        }
-    </script>
+    currentUser = data.user;
+}
+
+async function logout() {
+    await supabaseClient.auth.signOut();
+}
+
+// ================= EXERCISES =================
+const exerciseMap = {
+Push: ["Bench Press","Incline Bench","Dips","Overhead Press","Lateral Raise","Tricep Pushdown"],
+Pull: ["Pull Ups","Lat Pulldown","Barbell Row","Face Pull","Hammer Curl","Preacher Curl"],
+Legs: ["Squat","Leg Press","Deadlift","Lunges","Leg Curl","Calf Raises"],
+Core: ["Plank","Crunches","Leg Raises","Russian Twist","Ab Wheel"]
+};
+
+// ================= WORKOUT =================
+async function startWorkout() {
+    const type = document.getElementById("workoutType").value;
+
+    const { data } = await supabaseClient
+        .from("workouts")
+        .insert({ type, user_id: currentUser.id })
+        .select();
+
+    currentWorkoutId = data[0].id;
+
+    document.getElementById("setupArea").classList.add("hidden");
+    document.getElementById("activeWorkoutArea").classList.remove("hidden");
+
+    populateExercises(type);
+}
+
+function populateExercises(type) {
+    const select = document.getElementById("exerciseSelect");
+    select.innerHTML = `<option value="">Select Exercise</option>` +
+        exerciseMap[type].map(e => `<option value="${e}">${e}</option>`).join("");
+}
+
+// ================= AUTOFILL =================
+async function handleExerciseChange() {
+    const name = document.getElementById("exerciseSelect").value;
+
+    if (!name) return;
+
+    const { data } = await supabaseClient
+        .from("exercises")
+        .select("weight,reps")
+        .eq("name", name)
+        .order("id", { ascending:false })
+        .limit(1);
+
+    if (data.length) {
+        document.getElementById("prevWeightHint").innerText =
+            `Last: ${data[0].weight}kg x ${data[0].reps}`;
+        document.getElementById("weight").value = data[0].weight;
+    }
+}
+
+// ================= ADD =================
+async function addExercise() {
+    const name = document.getElementById("exerciseSelect").value;
+    const sets = document.getElementById("sets").value;
+    const reps = document.getElementById("reps").value;
+    const weight = document.getElementById("weight").value;
+
+    if (!name || !sets || !reps || !weight) return alert("Fill all fields");
+
+    await supabaseClient.from("exercises").insert({
+        workout_id: currentWorkoutId,
+        name, sets, reps, weight,
+        user_id: currentUser.id
+    });
+
+    loadHistory();
+}
+
+// ================= HISTORY =================
+async function loadHistory() {
+    const { data } = await supabaseClient
+        .from("workouts")
+        .select("*, exercises(*)")
+        .eq("user_id", currentUser.id)
+        .order("date",{ascending:false});
+
+    document.getElementById("history").innerHTML = (data || []).map(w=>`
+        <div class="card">
+            <b>${getIcon(w.type)} ${w.type} - ${new Date(w.date).toLocaleDateString()}</b>
+            ${w.exercises.map(e=>`
+                <div>${e.name} - ${e.sets}x${e.reps} @ ${e.weight}kg</div>
+            `).join("")}
+            <button class="delete-workout" onclick="deleteWorkout('${w.id}')">Delete</button>
+        </div>
+    `).join("");
+}
+
+async function deleteWorkout(workoutId) {
+    if (!confirm("Delete this workout from history?")) return;
+
+    const { error: exerciseError } = await supabaseClient
+        .from("exercises")
+        .delete()
+        .eq("workout_id", workoutId)
+        .eq("user_id", currentUser.id);
+
+    if (exerciseError) return alert(exerciseError.message);
+
+    const { error: workoutError } = await supabaseClient
+        .from("workouts")
+        .delete()
+        .eq("id", workoutId)
+        .eq("user_id", currentUser.id);
+
+    if (workoutError) return alert(workoutError.message);
+
+    if (currentWorkoutId === workoutId) currentWorkoutId = null;
+    loadHistory();
+}
+
+// ================= UTIL =================
+function getIcon(type){
+    return {Push:"⚡",Pull:"🎣",Legs:"🦵",Core:"🧘"}[type] || "🏋️";
+}
+
+function finishWorkout(){
+    document.getElementById("activeWorkoutArea").classList.add("hidden");
+    document.getElementById("setupArea").classList.remove("hidden");
+}
+</script>
+
 </body>
 </html>
