@@ -54,12 +54,108 @@
     <script>
 
         // ================= EXERCISES =================
-        const exerciseMap = {
-            Push: ["Bench Press", "Incline Bench", "Shoulder Press", "Lateral Raise", "Tricep Pushdown", "Dips"],
-            Pull: ["Pull Ups", "Lat Pulldown", "Barbell Row", "Dumbbell Row", "Face Pull", "Bicep Curl"],
-            Legs: ["Squat", "Leg Press", "Deadlift", "Lunges", "Leg Curl", "Calf Raises"],
-            Core: ["Plank", "Crunches", "Leg Raises", "Russian Twist", "Ab Wheel"]
-        };
+  const exerciseMap = {
+  Push: [
+    // Chest
+    "Bench Press",
+    "Incline Bench Press",
+    "Decline Bench Press",
+    "Incline Dumbbell Press",
+    "Chest Press Machine",
+    "Cable Fly",
+    "Pec Deck",
+
+    // Shoulders
+    "Overhead Press",
+    "Seated Dumbbell Shoulder Press",
+    "Arnold Press",
+    "Lateral Raise",
+    "Cable Lateral Raise",
+    "Front Raise",
+
+    // Triceps
+    "Tricep Pushdown",
+    "Overhead Tricep Extension",
+    "Skull Crushers",
+    "Close Grip Bench Press",
+    "Dips"
+  ],
+
+  Pull: [
+    // Back (vertical pull)
+    "Pull Ups",
+    "Chin Ups",
+    "Lat Pulldown",
+    "Wide Grip Pulldown",
+    "Neutral Grip Pulldown",
+
+    // Back (horizontal pull)
+    "Barbell Row",
+    "Dumbbell Row",
+    "Seated Cable Row",
+    "Chest Supported Row",
+    "T-Bar Row",
+
+    // Rear delts / traps
+    "Face Pull",
+    "Reverse Pec Deck",
+    "Shrugs",
+
+    // Biceps
+    "Barbell Curl",
+    "Dumbbell Curl",
+    "Hammer Curl",
+    "Cable Curl",
+    "Preacher Curl"
+  ],
+
+  Legs: [
+    // Quads
+    "Squat",
+    "Front Squat",
+    "Leg Press",
+    "Hack Squat",
+    "Leg Extension",
+
+    // Hamstrings / glutes
+    "Deadlift",
+    "Romanian Deadlift",
+    "Hip Thrust",
+    "Glute Bridge",
+    "Leg Curl",
+
+    // Unilateral
+    "Lunges",
+    "Bulgarian Split Squat",
+    "Step Ups",
+
+    // Calves
+    "Standing Calf Raise",
+    "Seated Calf Raise"
+  ],
+
+  Core: [
+    // Basic
+    "Plank",
+    "Side Plank",
+    "Crunches",
+    "Sit Ups",
+
+    // Lower abs
+    "Leg Raises",
+    "Hanging Leg Raises",
+    "Hanging Knee Raises",
+
+    // Rotation
+    "Russian Twist",
+    "Cable Woodchopper",
+
+    // Advanced
+    "Ab Wheel",
+    "Mountain Climbers",
+    "Toe Touches"
+  ]
+};
 
         // ================= SUPABASE =================
         const supabaseClient = window.supabase.createClient(
