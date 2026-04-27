@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gym Tracker</title>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        body {
+            font-family: Arial;
+            max-width: 500px;
+            margin: auto;
+            padding: 10px;
+        }
+
+        input,
+        button,
+        select {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+        }
+
+        .card {
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>🏋️ Gym Tracker</h1>
+
+    <!-- ✅ Workout type BEFORE starting -->
+    <select id="workoutType">
+        <option value="">Select Workout Type</option>
+        <option value="Push">Push</option>
+        <option value="Pull">Pull</option>
+        <option value="Legs">Legs</option>
+        <option value="Core">Core</option>
+    </select>
+
+    <button onclick="startWorkout()">Start Workout</button>
+
+    <div id="workout"></div>
+
+    <h2>History</h2>
+    <div id="history"></div>
+
+    <script>
+
+        // ================= EXERCISES =================
+        const exerciseMap = {
+            Push: ["Bench Press", "Incline Bench", "Shoulder Press", "Lateral Raise", "Tricep Pushdown", "Dips"],
+            Pull: ["Pull Ups", "Lat Pulldown", "Barbell Row", "Dumbbell Row", "Face Pull", "Bicep Curl"],
+            Legs: ["Squat", "Leg Press", "Deadlift", "Lunges", "Leg Curl", "Calf Raises"],
+            Core: ["Plank", "Crunches", "Leg Raises", "Russian Twist", "Ab Wheel"]
+        };
+
+        // ================= SUPABASE =================
+        const supabaseClient = window.supabase.createClient(
+            "https://qgapzcakepiohslhszur.supabase.co",
+            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFnYXB6Y2FrZXBpb2hzbGhzenVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcyOTc2NTAsImV4cCI6MjA5Mjg3MzY1MH0.HoB0G9Li-D34qQSvBgbZL5yqn6MXVIpXHhTVIQWUGK0"
+        );
+
+        let currentWorkout = null;
+
+        // ================= START WORKOUT =================
+        async function startWorkout() {
+            try {
+                const type = document.getElementById("workoutType").value;
+
+                if (!type) {
+                    alert("Select workout type first");
+                    return;
+                }
+
+                const { data, error } = await supabaseClient
+                    .from("workouts")
+                    .insert({ type })
+                    .select();
+
+                if (error) throw error;
+
+                currentWorkout = data[0].id;
+
+                renderWorkoutUI();
+
+            } catch (err) {
+                alert(err.message);
+            }
+        }
+
+        // ================= UI =================
+        function renderWorkoutUI() {
+            document.getElementById("workout").innerHTML = `
+    <div class="card">
+
+      <select id="exerciseSelect">
+        <option value="">Select Exercise</option>
+      </select>
+
+      <select id="reps">
+        <option value="">Reps</option>
+        ${[5, 6, 7, 8, 9, 10, 12, 15].map(r => `<option value="${r}">${r}</option>`).join("")}
+      </select>
+
+      <select id="sets">
+        <option value="">Sets</option>
+        ${[1, 2, 3, 4, 5].map(s => `<option value="${s}">${s}</option>`).join("")}
+      </select>
+
+      <input id="weight" type="number" placeholder="Weight (kg)">
+
+      <button onclick="addExercise()">Add</button>
+
+    </div>
+  `;
+
+            populateExercises();
+        }
+
+        // ================= POPULATE EXERCISES =================
+        function populateExercises() {
+            const type = document.getElementById("workoutType").value;
+            const select = document.getElementById("exerciseSelect");
+
+            select.innerHTML = `<option value="">Select Exercise</option>`;
+
+            exerciseMap[type].forEach(ex => {
+                const option = document.createElement("option");
+                option.value = ex;
+                option.textContent = ex;
+                select.appendChild(option);
+            });
+        }
+
+        // ================= ADD EXERCISE =================
+        async function addExercise() {
+            try {
+                const name = document.getElementById("exerciseSelect").value;
+const repsValue = document.getElementById("reps").value;
+const setsValue = document.getElementById("sets").value;
+const weightValue = document.getElementById("weight").value;
+
+if (!name || !repsValue || !setsValue || !weightValue) {
+  alert("Complete all fields");
+  return;
+}
+
+const reps = parseInt(repsValue);
+const sets = parseInt(setsValue);
+const weight = parseFloat(weightValue);
+
+                await supabaseClient.from("exercises").insert({
+                    workout_id: currentWorkout,
+                    name,
+                    reps,
+                    weight,
+                    sets
+                });
+
+                // Reset inputs
+                document.getElementById("exerciseSelect").value = "";
+                document.getElementById("reps").value = "";
+                document.getElementById("sets").value = "";
+                document.getElementById("weight").value = "";
+
+                document.getElementById("exerciseSelect").focus();
+
+                loadHistory();
+
+            } catch (err) {
+                alert(err.message);
+            }
+        }
+
+        // ================= HISTORY =================
+async function loadHistory() {
+  try {
+    const { data, error } = await supabaseClient
+      .from("workouts")
+      .select("id, type, date, exercises(id, name, reps, weight, sets)")
+      .order("date", { ascending: false });
+
+    if (error) throw error;
+
+    const container = document.getElementById("history");
+    container.innerHTML = "";
+
+    data.forEach(w => {
+      const totalSets = w.exercises.reduce((a, e) => a + e.sets, 0);
+
+      const card = document.createElement("div");
+      card.className = "card";
+
+card.innerHTML = `
+  <div onclick="toggleDetails('${w.id}')"
+       style="cursor:pointer;">
+
+    <b>${getWorkoutIcon(w.type)} ${w.type} - ${new Date(w.date).toLocaleDateString()}</b>
+
+    <div style="font-size:12px;color:#666;margin-top:2px;">
+      ${w.exercises.length} exercises · 
+      ${w.exercises.reduce((a,e)=>a+e.sets,0)} sets
+    </div>
+
+  </div>
+
+  <div id="details-${w.id}" style="display:none;margin-top:10px;">
+    ${renderExercises(w.exercises)}
+
+    <button onclick="deleteWorkout('${w.id}')"
+      style="background:#ff4d4d;color:white;margin-top:10px;">
+      Delete
+    </button>
+  </div>
+`;
+
+      container.appendChild(card);
+    });
+
+  } catch (err) {
+    console.error(err);
+alert(err.message);
+  }
+}
+
+function renderExercises(exercises) {
+  return exercises.map(e => {
+
+    // 🔹 Build sets display
+    const setsDisplay = Array.from({ length: e.sets })
+      .map(() => `${e.reps}x${e.weight}`)
+      .join(" · ");
+
+    // 🔹 Best set (simple version)
+    const best = `${e.weight}kg x ${e.reps}`;
+
+    return `
+      <div style="margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid #eee;">
+        <div style="font-weight:bold;">${e.name}</div>
+
+        <div style="font-size:13px;color:#444;margin-top:4px;">
+          ${setsDisplay}
+        </div>
+
+        <div style="font-size:12px;color:#888;margin-top:2px;">
+          🔥 Best: ${best}
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+function toggleDetails(id) {
+  const el = document.getElementById("details-" + id);
+  el.style.display = el.style.display === "none" ? "block" : "none";
+}
+
+async function deleteWorkout(id) {
+  const confirmDelete = confirm("Delete this workout?");
+  if (!confirmDelete) return;
+
+  try {
+    // delete exercises first (important!)
+    await supabaseClient.from("exercises").delete().eq("workout_id", id);
+
+    // then delete workout
+    await supabaseClient.from("workouts").delete().eq("id", id);
+
+
+
+    loadHistory();
+
+  } catch (err) {
+    alert("Error deleting workout");
+  }
+}
+    function getWorkoutIcon(type) {
+  const map = {
+    Push: "🔴",
+    Pull: "🔵",
+    Legs: "🟢",
+    Core: "🟡"
+  };
+  return map[type] || "🏋️";
+}
+
+async function getLastWeight(exerciseName) {
+  try {
+    const { data, error } = await supabaseClient
+      .from("exercises")
+      .select("weight")
+      .eq("name", exerciseName)
+      .order("id", { ascending: false }) // latest
+      .limit(1);
+
+    if (error) throw error;
+
+    return data.length ? data[0].weight : "";
+
+  } catch (err) {
+    console.error("Autofill error:", err);
+    return "";
+  }
+}
+
+document.addEventListener("change", async (e) => {
+  if (e.target.id === "exerciseSelect") {
+    const exercise = e.target.value;
+
+    if (!exercise) return;
+
+    const lastWeight = await getLastWeight(exercise);
+
+    if (lastWeight) {
+      document.getElementById("weight").value = lastWeight;
+    }
+  }
+});
+    </script>
+
+</body>
+
+</html>
