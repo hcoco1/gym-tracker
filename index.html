@@ -106,6 +106,15 @@
         <p class="subtitle">Track your gains, crush your goals.</p>
     </header>
 
+    <div id="authArea" class="card">
+  <h3>Login / Sign Up</h3>
+
+  <input id="email" type="email" placeholder="Email">
+  <input id="password" type="password" placeholder="Password">
+
+  <button onclick="signUp()">Sign Up</button>
+  <button class="secondary" onclick="signIn()">Sign In</button>
+</div>
     <div id="setupArea" class="card">
         <label style="font-size: 0.8rem; color: var(--text-dim);">Select Split</label>
         <select id="workoutType">
@@ -140,6 +149,53 @@
     <div id="history"></div>
 
     <script>
+
+      let currentUser = null;
+
+// Check session on load
+window.onload = async () => {
+  const { data } = await supabaseClient.auth.getUser();
+  currentUser = data.user;
+
+  if (currentUser) {
+    document.getElementById("authArea").classList.add("hidden");
+    loadHistory();
+  }
+};
+
+// SIGN UP
+async function signUp() {
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+
+  const { error } = await supabaseClient.auth.signUp({
+    email,
+    password
+  });
+
+  if (error) return alert(error.message);
+
+  alert("Check your email to confirm signup");
+}
+
+// SIGN IN
+async function signIn() {
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+
+  const { data, error } = await supabaseClient.auth.signInWithPassword({
+    email,
+    password
+  });
+
+  if (error) return alert(error.message);
+
+  currentUser = data.user;
+
+  document.getElementById("authArea").classList.add("hidden");
+
+  loadHistory();
+}
         const exerciseMap = {
             Push: ["Bench Press", "Incline DB Press", "Overhead Press", "Lateral Raise", "Tricep Pushdown", "Dips"],
             Pull: ["Pull Ups", "Lat Pulldown", "Barbell Row", "Face Pulls", "Hammer Curls", "Preacher Curls"],
@@ -159,7 +215,10 @@
 
         async function startWorkout() {
             const type = document.getElementById("workoutType").value;
-            const { data, error } = await supabaseClient.from("workouts").insert({ type }).select();
+            const { data, error } = await supabaseClient.from("workouts").insert({
+  type,
+  user_id: currentUser.id
+}).select();
             
             if (error) return alert("Error starting workout");
 
@@ -209,9 +268,10 @@
             if (!name || !sets || !reps || !weight) return alert("Fill all fields");
 
             const { error } = await supabaseClient.from("exercises").insert({
-                workout_id: currentWorkoutId,
-                name, reps, weight, sets
-            });
+  workout_id: currentWorkoutId,
+  name, reps, weight, sets,
+  user_id: currentUser.id
+});
 
             if (error) alert("Save failed");
             
